@@ -6,10 +6,16 @@ import BootstrapTable from 'react-bootstrap-table-next';
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import moment from 'moment';
-import { ToastContainer } from 'react-toastify';
+import decode from "jwt-decode";
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import ContentWrapper from '../Layout/ContentWrapper';
 
 const token = localStorage.getItem('currData');
+const decodedToken = decode(token);
+const username = decodedToken.sub;
+console.log('hey decodeddddd', username)
 
 class CustomerExploreMovie extends Component {
     constructor(props){
@@ -22,14 +28,34 @@ class CustomerExploreMovie extends Component {
             movieName: '',
             companyName: '',
             city: '',
-            state: ''
+            state: '',
+            cards: [],
+            creditCardId: '',
+            selectedMovie: null
         }
     }
 
+    notify = () => toast('This view has been recorded!', {
+        type: 'success',
+        position: 'top-right'
+    })
+
+    badRequest = () => toast('Invalid fields here', {
+        type: 'error',
+        position: 'top-right'
+    })
+
     async componentDidMount() {
-        const {data} = await axios.get(`http://localhost:8080/api/v1/movie/playing/search`,
-        {'headers': {'Authorization': `Bearer ${token}`}});
-        this.setState({movies: data, moviesCopy: data});
+        try {
+            let {data} = await axios.get(`http://localhost:8080/api/v1/movie/playing/search`,
+                {'headers': {'Authorization': `Bearer ${token}`}});
+            const cardsRes = await axios.get(`http://localhost:8080/api/v1/customer/mycards`,
+                {'headers': {'Authorization': `Bearer ${token}`}});
+            data = data.map((d, i) => ({...d, id: i}));
+            this.setState({movies: data, moviesCopy: data, cards: cardsRes.data});
+        } catch  (err) {
+
+        }
     }
 
     filterRanges = () => {
@@ -43,7 +69,7 @@ class CustomerExploreMovie extends Component {
         console.log('yooooo', filteredQuery.toString())
         axios.get(`http://localhost:8080/api/v1/movie/playing/search?${filteredQuery.toString()}`, { 'headers': {'Authorization': `Bearer ${token}`} })
             .then(res => {
-                this.setState({movies: res.data});
+                this.setState({movies: res.data.map((d, i) => ({...d, id: i}))});
             }).catch(err => console.log('errrrrrr', err));
     }
 
@@ -51,9 +77,22 @@ class CustomerExploreMovie extends Component {
 
     handleDateChange = (type, date) => this.setState({[type]: date});
 
+    handleView = () => {
+        const {selectedMovie, creditCardId} = this.state;
+        delete selectedMovie.id;
+        delete selectedMovie.address;
+        axios.post('http://localhost:8080/api/v1/customer/view', {...selectedMovie, creditCardId, username}, { 'headers': {'Authorization': `Bearer ${token}`} }).then(res => {
+            console.log('ressssss', res.data)
+            this.notify()
+        }).catch(err => {
+            console.log('errrrrrr', err)
+            this.badRequest();
+        });
+    }
+
     render() {
-        const {playedAfter, playedBefore, moviesCopy, movies} = this.state;
-        console.log('the moviesmovies', movies)
+        const {playedAfter, playedBefore, moviesCopy, movies, cards} = this.state;
+        console.log('the moviesmovies', this.state)
         const columns = [{
             dataField: 'movieName',
             text: 'Movie Name',
@@ -79,6 +118,11 @@ class CustomerExploreMovie extends Component {
                 text: 'Play Date',
                 sort: true
             }];
+        const selectRow = {
+            mode: 'radio',
+            clickToSelect: true,
+            onSelect: selectedRow => this.setState({selectedMovie: selectedRow})
+        };
         return (
             <ContentWrapper>
                 <div className="content-heading">
@@ -210,7 +254,7 @@ class CustomerExploreMovie extends Component {
 
                             <Row>
                                 <Col sm={6} lg={6} md={6}>
-                                    <button className="btn btn-primary ml-3"
+                                    <button className="float-right btn btn-primary ml-3"
                                             onClick={this.filterRanges}
                                     >
                                         Filter
@@ -222,15 +266,34 @@ class CustomerExploreMovie extends Component {
                             <Row>
                                 <BootstrapTable
                                     bootstrap4
-                                    keyField="movieName"
+                                    keyField="id"
                                     data={movies}
                                     columns={columns}
+                                    selectRow={selectRow}
                                 />
                             </Row>
 
-                            <div className="float-left">
-                                <Link to="user-func" className="btn btn-primary mr-4">Back</Link>
-                            </div>
+                            <Row>
+                                <Col sm={3} lg={3} md={3}>
+                                    <div className="float-left mt-4">
+                                        <Link to="user-func" className="btn btn-primary mr-4">Back</Link>
+                                    </div>
+                                </Col>
+
+                                <Col sm={6} lg={6} md={6}>
+                                    <select name="creditCardId" className="custom-select custom-select-sm"
+                                            onChange={this.handleInputChange}>
+                                        <option>Select Credit Card</option>
+                                        {cards.map(c => <option value={c.creditCardId}>{c.creditCardNum}</option>)}
+                                    </select>
+                                </Col>
+
+                                <Col sm={3} lg={3} md={3}>
+                                    <div className="float-right mt-4">
+                                        <button onClick={this.handleView} className="btn btn-primary mr-4">View</button>
+                                    </div>
+                                </Col>
+                            </Row>
                         </CardBody>
                     </Card>
                 </Container>

@@ -1,7 +1,8 @@
 import decode from "jwt-decode";
 
-// const token = localStorage.getItem('currData');
-// const decodedToken = decode(token);
+const token = localStorage.getItem('currData');
+const decodedToken = decode(token);
+console.log('decodeddddd', decodedToken)
 
 
 const Menu = [

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { withNamespaces, Trans } from 'react-i18next';
 import { Link, withRouter } from 'react-router-dom';
 import { Collapse, Badge } from 'reactstrap';
-
+import axios from "axios";
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import * as actions from '../../store/actions/actions';
@@ -12,6 +12,8 @@ import SidebarRun from './Sidebar.run';
 import SidebarUserBlock from './SidebarUserBlock';
 
 import Menu from '../../Menu.js';
+
+const token = localStorage.getItem('currData');
 
 /** Component to display headings on sidebar */
 const SidebarItemHeader = ({item}) => (
@@ -55,7 +57,8 @@ const SidebarSubHeader = ({item}) => (
 class Sidebar extends Component {
 
     state = {
-        collapse: {}
+        collapse: {},
+        user: null
     }
 
     componentDidMount() {
@@ -66,6 +69,9 @@ class Sidebar extends Component {
 
         // Listen for routes changes in order to hide the sidebar on mobile
         this.props.history.listen(this.closeSidebar);
+        axios.get('http://localhost:8080/api/v1/user/me', {'headers': {'Authorization': `Bearer ${token}`}}).then(res => {
+            this.setState({user: res.data});
+        }).catch(err => console.log('errrrrrrrr', err));
     }
 
     closeSidebar = () => {
