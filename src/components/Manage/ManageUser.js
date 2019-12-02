@@ -181,7 +181,7 @@ class ManageUser extends Component {
             <ContentWrapper>
                 <div className="content-heading">
                     <div>Admin Manage User
-                        <small>Supports all-inclusive filtering based on single keyword</small>
+                        <small>Sort the columns by clicking on them</small>
                     </div>
                 </div>
                 <Container fluid>

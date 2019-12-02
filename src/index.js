@@ -15,6 +15,8 @@ import { Provider } from 'react-redux';
 //import reducers from './store/reducers/index.js';
 //import {createStore} from 'redux';
 import 'react-bootstrap-table2-filter/dist/react-bootstrap-table2-filter.min.css';
+import "react-datepicker/dist/react-datepicker.css";
+import 'react-toastify/dist/ReactToastify.css';
 
 import App from './App';
 

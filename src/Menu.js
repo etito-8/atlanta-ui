@@ -1,3 +1,9 @@
+import decode from "jwt-decode";
+
+// const token = localStorage.getItem('currData');
+// const decodedToken = decode(token);
+
+
 const Menu = [
     {
         heading: 'Options',

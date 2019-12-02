@@ -1,159 +1,216 @@
 import React, { Component } from 'react';
-import ContentWrapper from '../Layout/ContentWrapper';
-import {Container, Card, CardHeader, CardBody, CardTitle, FormGroup, Label, Input} from 'reactstrap';
+import {Link} from 'react-router-dom';
+import {connect} from 'react-redux';
+import {Container, Card, CardHeader, CardBody, CardTitle, Col, Row} from 'reactstrap';
 import $ from 'jquery';
+import _ from 'lodash';
+import BootstrapTable from 'react-bootstrap-table-next';
+import axios from "axios";
+import ContentWrapper from '../Layout/ContentWrapper';
+import {company, releaseDate} from '../../store/actions/actions';
+import DatePicker from "react-datepicker";
+import moment from 'moment';
 
-//import Datatable from '../Tables/Datatable';
-import {Link} from "react-router-dom";
+
+const token = localStorage.getItem('currData');
 
 class UserVisitHistory extends Component {
+    constructor(props){
+        super(props)
+        this.state = {
+            companies: [],
+            companiesCopy: [],
+            managers: [],
+            minCities: '',
+            maxCities: '',
+            minEmployees: '',
+            maxEmployees: '',
+            minTheaters: '',
+            maxTheaters: '',
+            selectedCompany: null,
 
-    state = {
-        dtOptions1: {
-            'paging': true, // Table pagination
-            'ordering': true, // Column ordering
-            'info': true, // Bottom left status text
-            responsive: true,
-            // Text translation options
-            // Note the required keywords between underscores (e.g _MENU_)
-            oLanguage: {
-                sSearch: '<em class="fa fa-search"></em>',
-                sLengthMenu: '_MENU_ records per page',
-                info: 'Showing page _PAGE_ of _PAGES_',
-                zeroRecords: 'Nothing found - sorry',
-                infoEmpty: 'No records available',
-                infoFiltered: '(filtered from _MAX_ total records)',
-                oPaginate: {
-                    sNext: '<em class="fa fa-caret-right"></em>',
-                    sPrevious: '<em class="fa fa-caret-left"></em>'
-                }
-            }
-        },
-        dtOptions2: {
-            'paging': true, // Table pagination
-            'ordering': true, // Column ordering
-            'info': true, // Bottom left status text
-            responsive: true,
-            // Text translation options
-            // Note the required keywords between underscores (e.g _MENU_)
-            oLanguage: {
-                sSearch: '<em class="fa fa-search"></em>',
-                sLengthMenu: '_MENU_ records per page',
-                info: 'Showing page _PAGE_ of _PAGES_',
-                zeroRecords: 'Nothing found - sorry',
-                infoEmpty: 'No records available',
-                infoFiltered: '(filtered from _MAX_ total records)',
-                oPaginate: {
-                    sNext: '<em class="fa fa-caret-right"></em>',
-                    sPrevious: '<em class="fa fa-caret-left"></em>'
-                }
-            },
-            // Datatable Buttons setup
-            dom: 'Bfrtip',
-            buttons: [
-                { extend: 'copy', className: 'btn-info' },
-                { extend: 'csv', className: 'btn-info' },
-                { extend: 'excel', className: 'btn-info', title: 'XLS-File' },
-                { extend: 'pdf', className: 'btn-info', title: $('title').text() },
-                { extend: 'print', className: 'btn-info' }
-            ]
-        },
-        dtOptions3: {
-            'paging': true, // Table pagination
-            'ordering': true, // Column ordering
-            'info': true, // Bottom left status text
-            responsive: true,
-            // Text translation options
-            // Note the required keywords between underscores (e.g _MENU_)
-            oLanguage: {
-                sSearch: '<em class="fa fa-search"></em>',
-                sLengthMenu: '_MENU_ records per page',
-                info: 'Showing page _PAGE_ of _PAGES_',
-                zeroRecords: 'Nothing found - sorry',
-                infoEmpty: 'No records available',
-                infoFiltered: '(filtered from _MAX_ total records)',
-                oPaginate: {
-                    sNext: '<em class="fa fa-caret-right"></em>',
-                    sPrevious: '<em class="fa fa-caret-left"></em>'
-                }
-            },
-            // Datatable key setup
-            keys: true
+            startDate: new Date(),
+            endDate: new Date(),
+            visits:[],
+            visitsCopy:[],
+            nameFilter:""
         }
     }
 
-    // Access to internal datatable instance for customizations
-    dtInstance = dtInstance => {
-        const inputSearchClass = 'datatable_input_col_search';
-        const columnInputs = $('tfoot .' + inputSearchClass);
-        // On input keyup trigger filtering
-        columnInputs
-            .keyup(function() {
-                dtInstance.fnFilter(this.value, columnInputs.index(this));
-            });
+    // async componentDidMount() {
+    //     //chained axios get call here, second call is attached as a callback
+    //     //const token = localStorage.getItem('currData');
+    //     axios.get('http://localhost:8080/api/v1/company/all')
+    //         .then(async res => {
+    //             let companies = res.data;
+    //             try {
+    //                 const employees = await Promise.all(companies.map(c => axios.get(`http://localhost:8080/api/v1/company/${c}/employees`, { 'headers': {'Authorization': `Bearer ${token}`} }).then(res => res.data)))
+    //                 const theaters = await Promise.all(companies.map(c => axios.get(`http://localhost:8080/api/v1/company/${c}/theaters`, { 'headers': {'Authorization': `Bearer ${token}`} }).then(res => res.data)))
+    //                 const uniqueCitiesStates = employees.map(e => _.uniqBy(e, v => [v.city, v.state].join()));
+    //                 companies = companies.map((c, i) => ({company: c, numEmployees: employees[i].length, numTheaters: theaters[i].length, numCitiesCovered: uniqueCitiesStates[i].length}));
+    //                 this.setState({
+    //                     companies, companiesCopy: companies
+    //                 });
+    //             } catch (err) {
+    //
+    //             }
+    //         })
+    // }
+
+    componentDidMount() {
+        axios.get('http://localhost:8080/api/v1/user/visit/history',
+            { 'headers': {'Authorization': `Bearer ${token}`} })
+            .then(res => {
+                this.setState({
+                     visits: res.data,
+                     visitsCopy: res.data
+                });
+            }).catch((error) => {
+            console.log("not working");
+        });
     }
 
+
+    //updateRange = e => this.setState({[e.target.name]: e.target.value});
+
+    //updating the filter for start date in the range filter
+    handleStartChange = (date) => {
+        this.setState({
+            startDate: date
+        });
+    };
+
+    //updating the filter for end date in the range filter
+    // (Same function as update range in manage comp)
+    handleEndChange = (date) => {
+        this.setState({
+            endDate: date
+        });
+    };
+
+    filterCompanyName = (e) => {
+        const filterQuery = e.target.value;
+        this.setState(prevState => ({nameFilter: filterQuery, visits: prevState.visitsCopy.filter(v => v.companyName.includes(filterQuery))}))
+    }
+
+    filterRanges = () => {
+        const {endDate, startDate} = this.state;
+        const queries = new URLSearchParams({
+            visitedBefore: moment(endDate).format('YYYY-MM-DD'), visitedAfter: moment(startDate).format('YYYY-MM-DD')
+        });
+        console.log(queries,'queries');
+        axios.get(`http://localhost:8080/api/v1/user/visit/history?${queries.toString()}`, { 'headers': {'Authorization': `Bearer ${token}`} })
+            .then(res => {
+                this.setState({visits: res.data});
+            }).catch(err => console.log('errrrrrr', err));
+        console.log(this.state.visits, "does code reach here")
+    }
+
+
     render() {
+        console.log('the stateeeee', this.state)
+        const {nameFilter, endDate, startDate, visits, visitsCopy} = this.state;
+        const columns = [{
+            dataField: 'theaterName',
+            text: 'Theater',
+            sort: true
+        },
+            {
+                dataField: 'address',
+                text: 'Address',
+                sort: true
+            },
+            {
+                dataField: 'companyName',
+                text: 'Company',
+                sort: true
+            },
+            {
+                dataField: 'visitDate',
+                text: 'Visit Date',
+                sort: true
+            }];
+        const defaultSort = [{
+            dataField: 'company',
+            order: 'desc'
+        }];
         return (
             <ContentWrapper>
                 <div className="content-heading">
-                    <div>Customer Visit History
-                        <small>Supports sorting based on single keyword</small>
+                    <div>User Visit History
+                        <small>Sort the columns by clicking on them</small>
                     </div>
                 </div>
                 <Container fluid>
                     {/* DATATABLE DEMO 1 */}
                     <Card>
                         <CardHeader>
-                            <CardTitle><h3>Visit History</h3></CardTitle>
+                            <CardTitle>Visit History</CardTitle>
                         </CardHeader>
-
                         <CardBody>
-                            {/*<Datatable options={this.state.dtOptions1}>*/}
-                                <table className="table table-striped my-4 w-100">
-                                    <thead>
-                                    <tr>
-                                        <th data-priority="1">Theater</th>
-                                        <th className="sort-alpha">Address</th>
-                                        <th className="sort-alpha">Company</th>
-                                        <th className="sort-alpha">Visit Date</th>
-                                        {/*<th className="sort-alpha" data-priority="2">CSS grade</th>*/}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr className="gradeX">
-                                        <td>cwilson</td>
-                                        <td>0</td>
-                                        <td>2</td>
-                                        <td>4</td>
-                                    </tr>
-                                    <tr className="gradeC">
-                                        <td>jasonlee</td>
-                                        <td>3</td>
-                                        <td>1</td>
-                                        <td>5</td>
-                                    </tr>
-                                    <tr className="gradeA">
-                                        <td>jjohnson</td>
-                                        <td>4</td>
-                                        <td>2</td>
-                                        <td>5</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            {/*</Datatable>*/}
+                            {/*put buttons and shit here*/}
+                            {/*Need to use a visits copy array here because the drop down has to render an original instance*/}
+                            <Row>
+                                <Col sm={6} lg={6} md={6}>
+                                    <div className="form-group">
+                                        <label>Company Name</label>
+                                        <div className="col-md-10">
+                                            <select value={nameFilter} className="custom-select custom-select-sm"
+                                                    onChange={this.filterCompanyName}>
+                                                <option value="">All</option>
+                                                {_.uniqBy(visitsCopy, 'companyName').map(v => <option value={v.companyName}>{v.companyName}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </Col>
+
+                                <Row sm={9} lg={9} md={9}>
+                                    <div>
+                                        <label>Visit Date</label>
+                                        {/*<input placeholder="Min Cities" value={minCities} name="minCities" onChange={this.updateRange} /> - <input placeholder="Max Cities" value={maxCities} name="maxCities" onChange={this.updateRange} />*/}
+                                            <DatePicker
+                                                name = "startDate"
+                                                selected={this.state.startDate}
+                                                onChange={this.handleStartChange}
+                                                dateFormat="yyyy-MM-dd"
+                                            /> - <DatePicker
+                                        name = "endDate"
+                                        selected={this.state.endDate}
+                                        onChange={this.handleEndChange}
+                                        dateFormat="yyyy-MM-dd"
+                                    />
+                                    </div>
+                                </Row>
+                            </Row>
+
+                            <Row>
+                                <Col sm={6} lg={6} md={6}>
+                                    <button className="btn btn-primary ml-3"
+                                            onClick={this.filterRanges}
+                                    >
+                                        Filter
+                                    </button>
+                                </Col>
+
+                            </Row>
+
+                            <BootstrapTable
+                                bootstrap4
+                                keyField="company"
+                                data={visits}
+                                columns={columns}
+                                defaultSorted={ defaultSort }
+                            />
 
                             <div className="float-left">
-                                <Link to="login" className="btn btn-primary mr-4">Back</Link>
+                                <Link to="user-func" className="btn btn-primary mr-4">Back</Link>
                             </div>
-
                         </CardBody>
                     </Card>
                 </Container>
             </ContentWrapper>
         );
     }
-
 }
 
-export default UserVisitHistory;
+export default (UserVisitHistory);
